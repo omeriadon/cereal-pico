@@ -4,7 +4,7 @@
         {
             "label": "Build & Flash",
             "type": "shell",
-            "command": "cmake --build build",
+            "command": "cmake --build build && cp build/swift-blinky.uf2 /Volumes/RPI-RP2",
             "group": {
                 "kind": "build",
                 "isDefault": true
