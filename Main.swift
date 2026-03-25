@@ -23,14 +23,14 @@ struct Main {
         pwm_set_wrap(slice, 255)
 
         var level: Int32 = 0
-        var direction: Int32 = 1
+        var direction: Int32 = 10
 
         while true {
             pwm_set_chan_level(slice, channel, UInt16(level))
             level += direction
             if level >= 255 { direction = -1 }
-            if level <= 0   { direction = 1  }
-            sleep_ms(8)
+            if level <= 0   { direction = 1 }
+            sleep_ms(6)
         }
     }
 }
