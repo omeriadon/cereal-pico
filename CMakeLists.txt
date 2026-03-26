@@ -37,6 +37,7 @@ target_link_libraries(swift-blinky
     hardware_pwm
     hardware_uart
     pico_stdio_usb
+    pico_multicore
 )
 
 pico_enable_stdio_usb(swift-blinky 1)
