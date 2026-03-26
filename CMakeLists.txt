@@ -32,11 +32,15 @@ add_executable(swift-blinky
 set_target_properties(swift-blinky PROPERTIES LINKER_LANGUAGE CXX)
 
 target_link_libraries(swift-blinky
-    pico_stdlib hardware_uart
+    pico_stdlib
     hardware_gpio
     hardware_pwm
-    pico_stdlib
+    hardware_uart
+    pico_stdio_usb
 )
+
+pico_enable_stdio_usb(swift-blinky 1)
+pico_enable_stdio_uart(swift-blinky 0)
 
 # Clear the default COMPILE_OPTIONS which include C specific compiler flags that the Swift compiler will not accept
 # Instead, set those options to only apply when compiling C code.
