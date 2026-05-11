@@ -23,14 +23,23 @@ elseif(PICO_PLATFORM STREQUAL "rp2350-riscv")
     list(APPEND CLANG_ARCH_ABI_FLAGS "-Xcc -march=rv32imac_zicsr_zifencei_zba_zbb_zbs_zbkb -Xcc -mabi=ilp32")
 endif()
 
+set(PROJECT_SOURCES_DIR "${CMAKE_CURRENT_LIST_DIR}/source")
+
+# Auto-discover project sources under ./source.
+file(GLOB_RECURSE PROJECT_SWIFT_SOURCES CONFIGURE_DEPENDS "${PROJECT_SOURCES_DIR}/Swift/*.swift")
+file(GLOB_RECURSE PROJECT_C_SOURCES CONFIGURE_DEPENDS "${PROJECT_SOURCES_DIR}/*.c")
+
 add_executable(swift-blinky
-    # Source files:
-    Main.swift
-    PWMHelpers.c
-    DisplaySSD1309.c
+    ${PROJECT_SWIFT_SOURCES}
+    ${PROJECT_C_SOURCES}
 )
 
 set_target_properties(swift-blinky PROPERTIES LINKER_LANGUAGE CXX)
+
+# Allow BridgingHeader.h to keep using short includes like "PWMHelpers.h".
+target_include_directories(swift-blinky PRIVATE
+    "${PROJECT_SOURCES_DIR}/Display"
+)
 
 target_link_libraries(swift-blinky
     pico_stdlib
@@ -41,6 +50,10 @@ target_link_libraries(swift-blinky
     pico_stdio_usb
     pico_multicore
 )
+
+# Silence a GNU ld warning originating in the toolchain's CRT objects
+# (e.g. crtn.o missing .note.GNU-stack) which is not actionable for this project.
+target_link_options(swift-blinky PRIVATE "-Wl,--no-warn-execstack")
 
 pico_enable_stdio_usb(swift-blinky 1)
 pico_enable_stdio_uart(swift-blinky 0)

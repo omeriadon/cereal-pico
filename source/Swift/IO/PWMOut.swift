@@ -1,7 +1,7 @@
 struct PWMOut {
   let pin: GPIOPin
-  let slice: UInt
-  let channel: UInt
+  let slice: UInt32
+  let channel: UInt32
 
   init(_ pin: GPIOPin) {
     self.pin = pin
@@ -11,7 +11,7 @@ struct PWMOut {
     self.slice = pwm_gpio_to_slice_num(pin.pin)
     self.channel = pwm_gpio_to_channel(pin.pin)
 
-    pwm_set_wrap(slice, 255)
+    pwm_set_wrap(slice, UInt16(255))
     pwm_set_enabled(slice, true)
   }
 

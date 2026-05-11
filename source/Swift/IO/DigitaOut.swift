@@ -1,16 +1,16 @@
 struct DigitalOut {
-  let pin: UInt32
+  let pin: GPIOPin
 
   var isOn: Bool = false {
     didSet {
-      gpio_put(pin, isOn)
+      gpio_put(pin.pin, isOn)
     }
   }
 
-  init(pin: UInt32) {
+  init(pin: GPIOPin) {
     self.pin = pin
-    gpio_init(pin)
-    gpio_set_dir(pin, true)
+    gpio_init(pin.pin)
+    gpio_set_dir(pin.pin, true)
   }
 
   mutating func set(_ value: Bool) {
