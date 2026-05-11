@@ -5,6 +5,7 @@
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
 #include "PWMHelpers.h"
+#include "DisplaySSD1309.h"
 
 void multicore_launch_core1(void (*entry)(void));
 

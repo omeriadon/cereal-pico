@@ -41,3 +41,29 @@ $ cp build/swift-blinky.uf2 /Volumes/RP2040
 ```
 
 - The green LED should now be blinking in a pattern.
+
+## SSD1309 OLED (Waveshare 2.42") support
+
+This workspace now includes a basic SSD1309 SPI display path for the Waveshare 2.42" 128x64 OLED module (default SPI hardware mode).
+
+### Pico wiring (SPI mode)
+
+- `OLED DIN` -> `GP11` (SPI1 TX / MOSI)
+- `OLED CLK` -> `GP10` (SPI1 SCK)
+- `OLED CS` -> `GP13`
+- `OLED DC` -> `GP14`
+- `OLED RES` -> `GP12`
+- `OLED VCC` -> `3V3`
+- `OLED GND` -> `GND`
+
+### What firmware does
+
+- Initializes SSD1309 over SPI1 using those pins.
+- Clears the screen.
+- Draws the provided bitmap data (`resize`) centered on the 128x64 display.
+- Keeps running with a simple onboard LED heartbeat.
+
+Implementation files:
+
+- `DisplaySSD1309.c` / `DisplaySSD1309.h`: low-level SPI + SSD1309 commands + bitmap blit.
+- `Main.swift`: initializes display and renders the centered bitmap.

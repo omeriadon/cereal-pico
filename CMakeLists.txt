@@ -27,6 +27,7 @@ add_executable(swift-blinky
     # Source files:
     Main.swift
     PWMHelpers.c
+    DisplaySSD1309.c
 )
 
 set_target_properties(swift-blinky PROPERTIES LINKER_LANGUAGE CXX)
@@ -35,6 +36,7 @@ target_link_libraries(swift-blinky
     pico_stdlib
     hardware_gpio
     hardware_pwm
+    hardware_spi
     hardware_uart
     pico_stdio_usb
     pico_multicore
