@@ -1,21 +1,17 @@
 @main
 struct Main {
-    static func main() {
-        launch_usb_core()
+  static func main() {
+    initialize()
 
-        ssd1309_init_default_spi()
-        ssd1309_show_resize_centered()
+	// random display something
+	// its lib code requires some pins, we need to override that or account for it when placing pins.
+    ssd1309_show_resize_centered()
 
-        let ledPin = UInt32(PICO_DEFAULT_LED_PIN)
-        gpio_init(ledPin)
-        gpio_set_dir(ledPin, true)
+    let led = DigitalOut(pin: defaultLEDPin)
 
-        var isLedOn = false
-
-        while true {
-            isLedOn.toggle()
-            gpio_put(ledPin, isLedOn)
-            sleep_ms(500)
-        }
+    while true {
+      led.toggle()
+      sleep(0.5)
     }
+  }
 }
