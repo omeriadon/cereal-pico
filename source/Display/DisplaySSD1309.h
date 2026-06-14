@@ -11,6 +11,10 @@ void ssd1309_init_default_spi(void);
 void ssd1309_display_buffer(const uint8_t *buffer, uint32_t length);
 void ssd1309_clear(void);
 void ssd1309_fill(uint8_t value);
+void ssd1309_show_text(const char *text);
+void ssd1309_show_not_going(void);
+void ssd1309_show_going(void);
+void ssd1309_show_done(void);
 void ssd1309_show_resize_centered(void);
 
 void ssd1309_draw_bitmap_pages(
@@ -20,8 +24,7 @@ void ssd1309_draw_bitmap_pages(
     uint8_t yPage,
     const uint8_t *bitmap,
     uint8_t bitmapWidth,
-    uint8_t bitmapPageCount
-);
+    uint8_t bitmapPageCount);
 
 extern const uint32_t ssd1309_width;
 extern const uint32_t ssd1309_height;

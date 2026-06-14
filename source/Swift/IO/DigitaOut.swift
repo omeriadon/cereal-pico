@@ -11,6 +11,7 @@ struct DigitalOut {
     self.pin = pin
     gpio_init(pin.pin)
     gpio_set_dir(pin.pin, true)
+    gpio_put(pin.pin, false)
   }
 
   mutating func set(_ value: Bool) {

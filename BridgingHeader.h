@@ -5,6 +5,8 @@
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
 #include "source/Display/DisplaySSD1309.h"
+#include <errno.h>
+#include <stddef.h>
 
 void multicore_launch_core1(void (*entry)(void));
 
@@ -23,3 +25,5 @@ static inline void print(const char *s)
 {
     printf("%s\n", s);
 }
+
+int posix_memalign(void **memptr, size_t alignment, size_t size);
