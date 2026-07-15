@@ -14,6 +14,7 @@ void ssd1309_fill(uint8_t value);
 void ssd1309_show_text(const char *text);
 void ssd1309_show_not_going(void);
 void ssd1309_show_going(void);
+void ssd1309_show_dispensing_progress(uint8_t completedSegmentCount);
 void ssd1309_show_done(void);
 void ssd1309_show_resize_centered(void);
 

@@ -2,6 +2,7 @@ private let motorRunDurationMs: UInt32 = 2000
 private let cooldownDurationMs: UInt32 = 3000
 private let buzzerPulseDurationMs: UInt32 = 120
 private let buzzerDutyOn: UInt16 = 128
+private let progressSegmentCount: UInt32 = 12
 
 private let ultrasonicTriggerDistanceCM: Int = 5
 private let ultrasonicPollIntervalMs: UInt32 = 200
@@ -35,7 +36,44 @@ private func playBuzzerPulse(_ buzzer: inout PWMOut) {
 private func runMotorForward(_ motorA: inout DigitalOut, _ motorB: inout DigitalOut) {
     motorA.set(true)
     motorB.set(false)
-    sleep_ms(motorRunDurationMs)
+
+    let durationUs = motorRunDurationMs * 1_000
+    let startedAtUs = time_us_32()
+    let firstFrameStartedAtUs = time_us_32()
+    ssd1309_show_dispensing_progress(0)
+    var measuredFrameDurationUs = max(time_us_32() &- firstFrameStartedAtUs, 1)
+    var renderedSegmentCount: UInt32 = 0
+
+    while renderedSegmentCount < progressSegmentCount {
+        let elapsedUs = min(time_us_32() &- startedAtUs, durationUs)
+        let predictedFrameEndUs = min(elapsedUs + measuredFrameDurationUs, durationUs)
+        let segmentAtPredictedEnd = (
+            predictedFrameEndUs * progressSegmentCount + durationUs - 1
+        ) / durationUs
+        let nextSegmentCount = min(
+            max(renderedSegmentCount + 1, segmentAtPredictedEnd),
+            progressSegmentCount)
+        let nextSegmentDeadlineUs = (durationUs * nextSegmentCount) / progressSegmentCount
+        let nextFrameStartUs = nextSegmentDeadlineUs > measuredFrameDurationUs
+            ? nextSegmentDeadlineUs - measuredFrameDurationUs
+            : elapsedUs
+
+        let elapsedBeforeFrameUs = min(time_us_32() &- startedAtUs, durationUs)
+        if elapsedBeforeFrameUs < nextFrameStartUs {
+            sleep_us(UInt64(nextFrameStartUs - elapsedBeforeFrameUs))
+        }
+
+        let frameStartedAtUs = time_us_32()
+        ssd1309_show_dispensing_progress(UInt8(nextSegmentCount))
+        measuredFrameDurationUs = max(time_us_32() &- frameStartedAtUs, 1)
+        renderedSegmentCount = nextSegmentCount
+    }
+
+    let elapsedAfterFinalFrameUs = min(time_us_32() &- startedAtUs, durationUs)
+    if elapsedAfterFinalFrameUs < durationUs {
+        sleep_us(UInt64(durationUs - elapsedAfterFinalFrameUs))
+    }
+
     motorA.set(false)
     motorB.set(false)
 }

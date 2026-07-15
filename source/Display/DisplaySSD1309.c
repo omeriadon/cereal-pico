@@ -206,12 +206,24 @@ static const Ssd1309Glyph ssd1309_glyph_i = {
     { "#####", "  #  ", "  #  ", "  #  ", "  #  ", "  #  ", "#####" }
 };
 
+static const Ssd1309Glyph ssd1309_glyph_l = {
+    { "#    ", "#    ", "#    ", "#    ", "#    ", "#    ", "#####" }
+};
+
 static const Ssd1309Glyph ssd1309_glyph_n = {
     { "#   #", "##  #", "# # #", "#  ##", "#   #", "#   #", "#   #" }
 };
 
 static const Ssd1309Glyph ssd1309_glyph_o = {
     { " ### ", "#   #", "#   #", "#   #", "#   #", "#   #", " ### " }
+};
+
+static const Ssd1309Glyph ssd1309_glyph_p = {
+    { "#### ", "#   #", "#   #", "#### ", "#    ", "#    ", "#    " }
+};
+
+static const Ssd1309Glyph ssd1309_glyph_s = {
+    { " ####", "#    ", "#    ", " ### ", "    #", "    #", "#### " }
 };
 
 static const Ssd1309Glyph ssd1309_glyph_t = {
@@ -231,10 +243,16 @@ static const Ssd1309Glyph *ssd1309_glyph_for_character(char character)
         return &ssd1309_glyph_g;
     case 'I':
         return &ssd1309_glyph_i;
+    case 'L':
+        return &ssd1309_glyph_l;
     case 'N':
         return &ssd1309_glyph_n;
     case 'O':
         return &ssd1309_glyph_o;
+    case 'P':
+        return &ssd1309_glyph_p;
+    case 'S':
+        return &ssd1309_glyph_s;
     case 'T':
         return &ssd1309_glyph_t;
     default:
@@ -250,6 +268,17 @@ static void ssd1309_set_buffer_pixel(uint16_t x, uint16_t y)
 
     const uint32_t index = (uint32_t)(y >> 3u) * SSD1309_WIDTH + x;
     oledBackBuffer[index] |= (uint8_t)(1u << (y & 7u));
+}
+
+static void ssd1309_set_buffer_pixel_dithered(int16_t x, int16_t y, bool solid)
+{
+    if (x < 0 || y < 0 || x >= SSD1309_WIDTH || y >= SSD1309_HEIGHT) {
+        return;
+    }
+
+    if (solid || (((uint16_t)x + (uint16_t)y) & 1u) == 0u) {
+        ssd1309_set_buffer_pixel((uint16_t)x, (uint16_t)y);
+    }
 }
 
 static uint16_t ssd1309_measure_text_width(const char *text, uint8_t scale)
@@ -296,6 +325,227 @@ static void ssd1309_draw_glyph(uint16_t x, uint16_t y, const Ssd1309Glyph *glyph
     }
 }
 
+static void ssd1309_draw_glyph_clipped(int16_t x, int16_t y, const Ssd1309Glyph *glyph)
+{
+    for (uint8_t row = 0; row < 7; row++) {
+        const char *pattern = glyph->rows[row];
+        const int16_t pixelY = y + row;
+        if (pixelY < 0 || pixelY > 10) {
+            continue;
+        }
+
+        for (uint8_t col = 0; col < 5; col++) {
+            const int16_t pixelX = x + col;
+            if (pattern[col] != ' ' && pixelX >= 0 && pixelX < 100) {
+                ssd1309_set_buffer_pixel((uint16_t)pixelX, (uint16_t)pixelY);
+            }
+        }
+    }
+}
+
+static void ssd1309_draw_status(const char *text, int16_t y)
+{
+    const uint16_t textWidth = ssd1309_measure_text_width(text, 1);
+    int16_t cursorX = (textWidth < 96) ? (int16_t)(96 - textWidth) / 2 + 2 : 2;
+
+    for (const char *cursor = text; *cursor != '\0'; cursor++) {
+        ssd1309_draw_glyph_clipped(cursorX, y, ssd1309_glyph_for_character(*cursor));
+        cursorX += 6;
+    }
+}
+
+static void ssd1309_draw_vertical_line(uint8_t x, uint8_t yStart, uint8_t yEnd)
+{
+    for (uint8_t y = yStart; y <= yEnd; y++) {
+        ssd1309_set_buffer_pixel(x, y);
+    }
+}
+
+static void ssd1309_draw_filled_circle(int16_t centerX, int16_t centerY, uint8_t radius)
+{
+    const int16_t radiusSquared = radius * radius;
+    for (int16_t y = -radius; y <= radius; y++) {
+        for (int16_t x = -radius; x <= radius; x++) {
+            if (x * x + y * y <= radiusSquared) {
+                ssd1309_set_buffer_pixel(centerX + x, centerY + y);
+            }
+        }
+    }
+}
+
+static void ssd1309_draw_controls(void)
+{
+    ssd1309_draw_vertical_line(101, 3, 60);
+    ssd1309_draw_filled_circle(115, 11, 6);
+    ssd1309_draw_filled_circle(115, 32, 6);
+    ssd1309_draw_filled_circle(115, 53, 6);
+}
+
+static const uint8_t moonZzzBitmap[] = {
+    0x00, 0xc0, 0xe0, 0x30, 0x18, 0x0c, 0x0c, 0x8c, 0x8c, 0xcc, 0xcc, 0xcc, 0x58, 0x78, 0x70, 0xe0,
+    0x40, 0x00, 0x00, 0x0f, 0x7f, 0xe0, 0x80, 0xf0, 0xfc, 0x0f, 0x03, 0x01, 0x00, 0x00, 0x00, 0xb0,
+    0xf0, 0x90, 0x00, 0x80, 0x80, 0x80, 0x00, 0x00, 0x00, 0x01, 0x03, 0x03, 0x00, 0x00, 0x00, 0x00,
+    0x88, 0xb8, 0xe8, 0xc8, 0x88, 0x00, 0x0f, 0x0f, 0x0d,
+};
+
+static void ssd1309_draw_moon_zzz(void)
+{
+    const uint8_t sourceWidth = 19;
+    const uint8_t sourceHeight = 24;
+    const uint8_t startX = 31;
+    const uint8_t startY = 14;
+
+    for (uint8_t sourceY = 0; sourceY < sourceHeight; sourceY++) {
+        for (uint8_t sourceX = 0; sourceX < sourceWidth; sourceX++) {
+            const uint32_t byteIndex = (uint32_t)(sourceY >> 3u) * sourceWidth + sourceX;
+            if ((moonZzzBitmap[byteIndex] & (1u << (sourceY & 7u))) == 0) {
+                continue;
+            }
+
+            const uint8_t x = startX + sourceX * 2;
+            const uint8_t y = startY + sourceY * 2;
+            ssd1309_set_buffer_pixel(x, y);
+            ssd1309_set_buffer_pixel(x + 1, y);
+            ssd1309_set_buffer_pixel(x, y + 1);
+            ssd1309_set_buffer_pixel(x + 1, y + 1);
+        }
+    }
+}
+
+typedef struct {
+    int8_t innerX;
+    int8_t innerY;
+    int8_t outerX;
+    int8_t outerY;
+} Ssd1309ProgressSegment;
+
+static const Ssd1309ProgressSegment progressSegments[] = {
+    { 50, 25, 50, 19 }, { 57, 27, 60, 22 }, { 61, 32, 67, 29 },
+    { 63, 38, 69, 38 }, { 61, 45, 67, 48 }, { 57, 49, 60, 54 },
+    { 50, 51, 50, 57 }, { 43, 49, 40, 54 }, { 39, 45, 33, 48 },
+    { 37, 38, 31, 38 }, { 39, 32, 33, 29 }, { 43, 27, 40, 22 },
+};
+
+static void ssd1309_draw_thick_line(const Ssd1309ProgressSegment *segment, bool solid)
+{
+    int16_t x = segment->innerX;
+    int16_t y = segment->innerY;
+    const int16_t deltaX = (segment->outerX > x) ? segment->outerX - x : x - segment->outerX;
+    const int16_t stepX = (x < segment->outerX) ? 1 : -1;
+    const int16_t deltaY = (segment->outerY > y) ? y - segment->outerY : segment->outerY - y;
+    const int16_t stepY = (y < segment->outerY) ? 1 : -1;
+    int16_t error = deltaX + deltaY;
+
+    while (true) {
+        for (int8_t offsetY = -1; offsetY <= 1; offsetY++) {
+            for (int8_t offsetX = -1; offsetX <= 1; offsetX++) {
+                ssd1309_set_buffer_pixel_dithered(x + offsetX, y + offsetY, solid);
+            }
+        }
+
+        if (x == segment->outerX && y == segment->outerY) {
+            break;
+        }
+
+        const int16_t doubledError = 2 * error;
+        if (doubledError >= deltaY) {
+            error += deltaY;
+            x += stepX;
+        }
+        if (doubledError <= deltaX) {
+            error += deltaX;
+            y += stepY;
+        }
+    }
+}
+
+static void ssd1309_draw_progress(uint8_t completedSegmentCount)
+{
+    if (completedSegmentCount > 12) {
+        completedSegmentCount = 12;
+    }
+
+    for (uint8_t index = 0; index < 12; index++) {
+        ssd1309_draw_thick_line(&progressSegments[index], index < completedSegmentCount);
+    }
+}
+
+typedef enum {
+    SSD1309_STATE_NONE,
+    SSD1309_STATE_IDLE,
+    SSD1309_STATE_DISPENSING,
+    SSD1309_STATE_DONE,
+} Ssd1309UiState;
+
+static Ssd1309UiState currentUiState = SSD1309_STATE_NONE;
+
+static const char *ssd1309_status_for_state(Ssd1309UiState state)
+{
+    switch (state) {
+    case SSD1309_STATE_IDLE:
+        return "IDLE";
+    case SSD1309_STATE_DISPENSING:
+        return "DISPENSING";
+    case SSD1309_STATE_DONE:
+        return "DONE";
+    case SSD1309_STATE_NONE:
+    default:
+        return "";
+    }
+}
+
+static void ssd1309_render_ui(
+    Ssd1309UiState state,
+    uint8_t completedSegmentCount,
+    const char *outgoingStatus,
+    int8_t outgoingY,
+    const char *incomingStatus,
+    int8_t incomingY)
+{
+    memset(oledBackBuffer, 0x00, sizeof(oledBackBuffer));
+    ssd1309_draw_controls();
+
+    if (state == SSD1309_STATE_IDLE) {
+        ssd1309_draw_moon_zzz();
+    } else {
+        ssd1309_draw_progress(state == SSD1309_STATE_DONE ? 12 : completedSegmentCount);
+    }
+
+    if (outgoingStatus != NULL) {
+        ssd1309_draw_status(outgoingStatus, outgoingY);
+    }
+    if (incomingStatus != NULL) {
+        ssd1309_draw_status(incomingStatus, incomingY);
+    }
+
+    if (state == SSD1309_STATE_DISPENSING) {
+        for (uint32_t index = 0; index < sizeof(oledBackBuffer); index++) {
+            oledBackBuffer[index] = (uint8_t)~oledBackBuffer[index];
+        }
+    }
+
+    ssd1309_display_buffer(oledBackBuffer, sizeof(oledBackBuffer));
+}
+
+static void ssd1309_transition_to_state(Ssd1309UiState state)
+{
+    const char *incomingStatus = ssd1309_status_for_state(state);
+    if (currentUiState == SSD1309_STATE_NONE || currentUiState == state) {
+        ssd1309_render_ui(state, 0, NULL, 0, incomingStatus, 3);
+        currentUiState = state;
+        return;
+    }
+
+    const char *outgoingStatus = ssd1309_status_for_state(currentUiState);
+    for (uint8_t frame = 0; frame <= 5; frame++) {
+        const int8_t offset = (int8_t)((frame * 10u) / 5u);
+        ssd1309_render_ui(state, 0, outgoingStatus, 3 - offset, incomingStatus, 13 - offset);
+        sleep_ms(18);
+    }
+
+    currentUiState = state;
+}
+
 void ssd1309_show_text(const char *text)
 {
     if (text == NULL || *text == '\0') {
@@ -331,17 +581,29 @@ void ssd1309_show_text(const char *text)
 
 void ssd1309_show_not_going(void)
 {
-    ssd1309_show_text("NOT GOING");
+    ssd1309_transition_to_state(SSD1309_STATE_IDLE);
 }
 
 void ssd1309_show_going(void)
 {
-    ssd1309_show_text("GOING");
+    ssd1309_transition_to_state(SSD1309_STATE_DISPENSING);
+}
+
+void ssd1309_show_dispensing_progress(uint8_t completedSegmentCount)
+{
+    ssd1309_render_ui(
+        SSD1309_STATE_DISPENSING,
+        completedSegmentCount,
+        NULL,
+        0,
+        ssd1309_status_for_state(SSD1309_STATE_DISPENSING),
+        3);
+    currentUiState = SSD1309_STATE_DISPENSING;
 }
 
 void ssd1309_show_done(void)
 {
-    ssd1309_show_text("DONE");
+    ssd1309_transition_to_state(SSD1309_STATE_DONE);
 }
 
 void ssd1309_show_resize_centered(void)
