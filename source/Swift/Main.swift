@@ -10,8 +10,8 @@ private let ultrasonicTriggerDistanceCM: Int = 5
 private let ultrasonicPollIntervalMs: UInt32 = 200
 
 private let buttonPin = GPIOPin(pin: 26)
-private let buttonLessPin = GPIOPin(pin: 18)
-private let buttonMorePin = GPIOPin(pin: 27)
+private let buttonLessPin = GPIOPin(pin: 27)
+private let buttonMorePin = GPIOPin(pin: 18)
 private let motorPinA = GPIOPin(pin: 1)
 private let motorPinB = GPIOPin(pin: 2)
 private let buzzerPositivePin = GPIOPin(pin: 6)
@@ -136,7 +136,7 @@ private func waitForTrigger(
 		}
 
 		if ultrasonicTriggered(&ultrasonic) {
-			return .normal
+			return .more
 		}
 
 		sleep_ms(ultrasonicPollIntervalMs)
