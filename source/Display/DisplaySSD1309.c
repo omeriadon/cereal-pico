@@ -25,14 +25,22 @@ const uint8_t resize_bitmap_page_count = 4;
 const uint32_t resize_bitmap_length = 136;
 
 const uint8_t resize_bitmap[] = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xf8, 0x00, 0x00, 0xff, 0xfc, 0x00, 0x00, 0xff, 0xfc,
-    0x00, 0x00, 0x01, 0xfc, 0x00, 0x00, 0x07, 0xfc, 0x00, 0x00, 0x0f, 0xfc, 0x00, 0x00, 0x1f, 0xfc,
-    0x00, 0x00, 0x1f, 0xbc, 0x00, 0x00, 0x7e, 0x3c, 0x00, 0x00, 0xfc, 0x3c, 0x00, 0x01, 0xf8, 0x3c,
-    0x00, 0x01, 0xf8, 0x38, 0x00, 0x01, 0xe0, 0x00, 0x00, 0x01, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x3c, 0x00, 0x00, 0xe0, 0x7c, 0x00, 0x00, 0xe0, 0xfc, 0x00, 0x00, 0xe1, 0xf8, 0x00, 0x00,
-    0xe3, 0xf0, 0x00, 0x00, 0xe7, 0xe0, 0x00, 0x00, 0xef, 0xc0, 0x00, 0x00, 0xff, 0x80, 0x00, 0x00,
-    0xff, 0x00, 0x00, 0x00, 0xfe, 0x00, 0x00, 0x00, 0xfd, 0x60, 0x00, 0x00, 0xff, 0xf0, 0x00, 0x00,
-    0xff, 0xf8, 0x00, 0x00, 0xff, 0xf0, 0x00, 0x00,
+    // Page 3
+    0x00, 0x00, 0xbf, 0x06, 0x00, 0x00, 0xff, 0x0f, 0x00, 0x00, 0xff, 0x1f, 0x00, 0x00, 0xff, 0x0f,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 
+    // Page 2
+    0x07, 0x3e, 0x00, 0x00, 0x07, 0x3f, 0x00, 0x00, 0x87, 0x1f, 0x00, 0x00, 0xc7, 0x0f, 0x00, 0x00,
+    0xe7, 0x07, 0x00, 0x00, 0xf7, 0x03, 0x00, 0x00, 0xff, 0x01, 0x00, 0x00, 0xff, 0x00, 0x00, 0x00,
+    0x7f, 0x00, 
+    // Page 1
+    0xf8, 0x3d, 0x00, 0x00, 0x7e, 0x3c, 0x00, 0x00, 0x3f, 0x3c, 0x00, 0x80, 0x1f, 0x3c, 0x00, 0x80,
+    0x1f, 0x1c, 0x00, 0x80, 0x07, 0x00, 0x00, 0x80, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3c,
+    0x00, 0x00, 
+    // Page 0
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x1f, 0x00, 0x00, 0xff, 0x3f, 0x00, 0x00, 0xff, 0x3f,
+    0x00, 0x00, 0x80, 0x3f, 0x00, 0x00, 0xe0, 0x3f, 0x00, 0x00, 0xf0, 0x3f, 0x00, 0x00, 0xf8, 0x3f,
+    0x00, 0x01
 };
 
 const uint8_t *ssd1309_resize_bitmap_pointer(void)
@@ -232,6 +240,10 @@ static const Ssd1309Glyph ssd1309_glyph_t = {
 
 static const Ssd1309Glyph *ssd1309_glyph_for_character(char character)
 {
+    if (character >= 'a' && character <= 'z') {
+        character = (char)(character - ('a' - 'A'));
+    }
+
     switch (character) {
     case ' ':
         return &ssd1309_space_glyph;
@@ -373,12 +385,42 @@ static void ssd1309_draw_filled_circle(int16_t centerX, int16_t centerY, uint8_t
     }
 }
 
+static void ssd1309_draw_circle_outline(int16_t centerX, int16_t centerY, uint8_t radius)
+{
+    const int16_t outerRadiusSquared = radius * radius;
+    const int16_t innerRadius = (radius > 1) ? (radius - 2) : 0;
+    const int16_t innerRadiusSquared = innerRadius * innerRadius;
+
+    for (int16_t y = -radius; y <= radius; y++) {
+        for (int16_t x = -radius; x <= radius; x++) {
+            const int16_t distanceSquared = x * x + y * y;
+            if (distanceSquared <= outerRadiusSquared && distanceSquared >= innerRadiusSquared) {
+                ssd1309_set_buffer_pixel(centerX + x, centerY + y);
+            }
+        }
+    }
+}
+
+// Unpressed buttons render as solid filled circles (raised look). A pressed
+// button renders as a hollow ring instead, so it visually reads as pushed in.
+static void ssd1309_draw_button_circle(int16_t centerX, int16_t centerY, uint8_t radius, bool pressed)
+{
+    if (pressed) {
+        ssd1309_draw_circle_outline(centerX, centerY, radius);
+    } else {
+        ssd1309_draw_filled_circle(centerX, centerY, radius);
+    }
+}
+
+// Index 0 = top circle (more), 1 = middle circle (normal), 2 = bottom circle (less).
+static bool buttonPressedState[3] = { false, false, false };
+
 static void ssd1309_draw_controls(void)
 {
     ssd1309_draw_vertical_line(101, 3, 60);
-    ssd1309_draw_filled_circle(115, 11, 6);
-    ssd1309_draw_filled_circle(115, 32, 6);
-    ssd1309_draw_filled_circle(115, 53, 6);
+    ssd1309_draw_button_circle(115, 11, 6, buttonPressedState[0]);
+    ssd1309_draw_button_circle(115, 32, 6, buttonPressedState[1]);
+    ssd1309_draw_button_circle(115, 53, 6, buttonPressedState[2]);
 }
 
 static const uint8_t moonZzzBitmap[] = {
@@ -402,8 +444,11 @@ static void ssd1309_draw_moon_zzz(void)
                 continue;
             }
 
+            // Flipped over the x axis: read rows bottom-to-top so the image
+            // is mirrored vertically while columns stay in place.
+            const uint8_t flippedSourceY = (sourceHeight - 1) - sourceY;
             const uint8_t x = startX + sourceX * 2;
-            const uint8_t y = startY + sourceY * 2;
+            const uint8_t y = startY + flippedSourceY * 2;
             ssd1309_set_buffer_pixel(x, y);
             ssd1309_set_buffer_pixel(x + 1, y);
             ssd1309_set_buffer_pixel(x, y + 1);
@@ -483,11 +528,11 @@ static const char *ssd1309_status_for_state(Ssd1309UiState state)
 {
     switch (state) {
     case SSD1309_STATE_IDLE:
-        return "IDLE";
+        return "Idle";
     case SSD1309_STATE_DISPENSING:
-        return "DISPENSING";
+        return "Dispensing";
     case SSD1309_STATE_DONE:
-        return "DONE";
+        return "Done";
     case SSD1309_STATE_NONE:
     default:
         return "";
@@ -577,6 +622,20 @@ void ssd1309_show_text(const char *text)
     }
 
     ssd1309_display_buffer(oledBackBuffer, sizeof(oledBackBuffer));
+}
+
+// lessPressed/normalPressed/morePressed map to the bottom/middle/top circles.
+// Only takes visual effect while idle, since dispensing/done screens don't
+// show the controls.
+void ssd1309_update_button_states(bool lessPressed, bool normalPressed, bool morePressed)
+{
+    buttonPressedState[0] = morePressed;
+    buttonPressedState[1] = normalPressed;
+    buttonPressedState[2] = lessPressed;
+
+    if (currentUiState == SSD1309_STATE_IDLE) {
+        ssd1309_render_ui(SSD1309_STATE_IDLE, 0, NULL, 0, ssd1309_status_for_state(SSD1309_STATE_IDLE), 3);
+    }
 }
 
 void ssd1309_show_not_going(void)

@@ -17,6 +17,7 @@ void ssd1309_show_going(void);
 void ssd1309_show_dispensing_progress(uint8_t completedSegmentCount);
 void ssd1309_show_done(void);
 void ssd1309_show_resize_centered(void);
+void ssd1309_update_button_states(bool lessPressed, bool normalPressed, bool morePressed);
 
 void ssd1309_draw_bitmap_pages(
     uint8_t *framebuffer,
